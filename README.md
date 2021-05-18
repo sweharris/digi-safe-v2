@@ -1,4 +1,4 @@
-This is version of my digital safe controller board replacement.
+This is version 2 of my digital safe controller board replacement.
 
 This time I did this using an ESP8266 instead of an Arduino.  It should
 be more reliable!
