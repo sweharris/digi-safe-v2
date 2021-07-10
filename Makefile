@@ -8,13 +8,13 @@ ESPTOOL=$(wildcard $(HOME)/.arduino15/packages/esp8266/hardware/esp8266/*/tools/
 
 SRC = $(wildcard *.ino)
 PROJECT = $(notdir $(CURDIR))
-TARGET = $(PROJECT).$(subst :,.,$(BOARD)).bin
+TARGET = $(PROJECT).ino.bin
 FS_SRC= $(wildcard html/*)
 
 $(TARGET): $(SRC) html.h
 	@rm -rf tmp
 	@mkdir -p tmp
-	TMPDIR=$(PWD)/tmp arduino-cli compile --fqbn=$(BOARD)
+	TMPDIR=$(PWD)/tmp arduino-cli compile --fqbn=$(BOARD) --output-dir=$(PWD)
 	@rm -rf tmp
 
 html.h: $(FS_SRC)
@@ -31,7 +31,7 @@ endif
 
 upload:
 	@mkdir -p tmp
-	TMPDIR=$(PWD)/tmp arduino-cli upload --fqbn=$(BOARD) -p $(PORT)
+	TMPDIR=$(PWD)/tmp arduino-cli upload --fqbn=$(BOARD) -p $(PORT) --input-dir=$(PWD)
 	@rm -rf tmp
 
 ##	python $(ESPTOOL) --port=$(PORT) write_flash 0x0 $(TARGET)
