@@ -9,6 +9,7 @@
 #include <ESP8266mDNS.h>
 #include <EEPROM.h>
 #include <ESP8266WebServer.h>
+#include <ArduinoOTA.h>
 #include "html.h"
 #include "version.h"
 
@@ -57,6 +58,7 @@ enum safestate {
 
 int state=UNLOCKED;
 boolean wifi_connected;
+boolean allow_updates = false;
 
 // These can be read at startup time from EEPROM
 String ui_username;
@@ -153,6 +155,28 @@ void opensafe()
     digitalWrite(LED_BUILTIN,HIGH);
     server.sendContent("Completed");
     server.sendContent("");
+  }
+}
+
+void enable_update(bool enable)
+{
+  if (enable)
+  {
+    if (state == UNLOCKED)
+    {
+      allow_updates = true;
+      send_text("Updates can be sent using BasicOTA to: " + WiFi.localIP().toString());
+    }
+    else
+    {
+      allow_updates = false;
+      send_text("Can not perform update while safe is locked");
+    }
+  }
+  else
+  {
+    allow_updates = false;
+    send_text("Update server disabled");
   }
 }
 
@@ -296,6 +320,8 @@ boolean handleRequest()
   else if (path == "/top_frame.html")   { send_text(top_frame_html); }
   else if (path == "/change_auth.html") { send_text(change_auth_html); }
   else if (path == "/change_ap.html")   { set_ap(); }
+  else if (path == "/enable_update")    { enable_update(1); }
+  else if (path == "/disable_update")   { enable_update(0); }
   else if (path == "/safe/")
   {
          if (server.hasArg("status"))     { status(); }
@@ -334,10 +360,6 @@ void setup()
   // Get the EEPROM contents into RAM
   EEPROM.begin(EEPROM_SIZE);
 
-  // Set the safe state
-  pinMode(pin,OUTPUT);
-  digitalWrite(pin,LOW);
-
   Serial.println("Getting passwords from EEPROM");
 
   // Try reading the values from the EEPROM
@@ -361,6 +383,10 @@ void setup()
     pin=pinstr.toInt();
   else
     pin=default_pin;
+
+  // Set the safe state
+  pinMode(pin,OUTPUT);
+  digitalWrite(pin,LOW);
 
   // Ensure LED is off
   pinMode(LED_BUILTIN,OUTPUT);
@@ -441,10 +467,44 @@ void setup()
   server.begin();
   
   Serial.println("TCP server started");
+
+  // Configure the OTA update service, but don't start it yet!
+  ArduinoOTA.setHostname(safename.c_str());
+
+  if (ui_pswd != "")
+    ArduinoOTA.setPassword(ui_pswd.c_str());
+
+  ArduinoOTA.onStart([]()
+  {
+    Serial.println("Starting updating");
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+
+  ArduinoOTA.begin();
+
+  Serial.println("OTA service configured");
 }
 
 void loop()
 {
   MDNS.update();
   server.handleClient();
+  if (allow_updates)
+    ArduinoOTA.handle();
 }

@@ -136,6 +136,11 @@ Repeat: <input type=password name=lock2 length=40><br>
 <a href="change_ap.html">Change Safe Connection Details</a>
 <br>
 <hr>
+<a href="enable_update">Enable Safe Network Update</a>
+<br>
+<a href="disable_update">Disable Safe Network Update</a>
+<br>
+<hr>
 </center>
 </form>
 </body>

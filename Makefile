@@ -12,7 +12,7 @@ PROJECT = $(notdir $(CURDIR))
 TARGET = $(PROJECT).ino.bin
 FS_SRC= $(wildcard html/*)
 
-$(TARGET): $(SRC) html.h
+$(TARGET): $(SRC) html.h version.h
 	@rm -rf tmp
 	@mkdir -p tmp
 	TMPDIR=$(PWD)/tmp arduino-cli compile --fqbn=$(BOARD)$(XTAL) --output-dir=$(PWD)
