@@ -10,10 +10,11 @@
 #include <EEPROM.h>
 #include <ESP8266WebServer.h>
 #include "html.h"
+#include "version.h"
 
 // This is pin D6 on most boards; this is the pin that needs to be
 // connected to the relay
-#define pin D6
+#define default_pin D6
 
 // We need to store 5 values in EEPROM.
 //   safe UI username
@@ -21,6 +22,8 @@
 //   WiFi SSID
 //   WiFi password
 //   lock password
+//   Safe Name
+//   Pin to open solenoid
 //
 // For simplicitly we'll limit them to 100 characters each and sprinkle
 // them through the EEPROM at 128 byte offsets
@@ -29,7 +32,7 @@
 //
 // We put a magic string in front to detect if the values are good or not
 
-#define EEPROM_SIZE 640
+#define EEPROM_SIZE 1024
 #define maxpwlen 100
 #define eeprom_magic "PSWD:"
 #define eeprom_magic_len 5
@@ -39,6 +42,8 @@
 #define ui_wifi_ssid_offset  256
 #define ui_wifi_pswd_offset  384
 #define lock_pswd_offset     512
+#define safename_offset      640
+#define pin_offset           768
 
 enum safestate {
   UNLOCKED,
@@ -59,6 +64,9 @@ String ui_pswd;
 String wifi_ssid;
 String wifi_pswd;
 String lock_pswd;
+String safename;
+String pinstr;
+int    pin;
 
 // Create the webserver structure for port 80
 ESP8266WebServer server(80);
@@ -91,7 +99,7 @@ String get_pswd(int offset)
   return pswd;
 }
 
-void set_pswd(String s, int offset)
+void set_pswd(String s, int offset, bool commit=true)
 { 
   String pswd=eeprom_magic + s;
 
@@ -100,7 +108,8 @@ void set_pswd(String s, int offset)
     EEPROM.write(offset+i,pswd[i]);
   }
   EEPROM.write(offset+pswd.length(),0);
-  EEPROM.commit();
+  if (commit)
+    EEPROM.commit();
 }
 
 /////////////////////////////////////////
@@ -205,16 +214,41 @@ void unlock(boolean clear, boolean testonly)
 
 void set_ap()
 {
-  if (server.hasArg("ssid") && server.hasArg("password") && server.hasArg("setwifi"))
+  if (server.hasArg("setwifi"))
   {
-     Serial.println("Setting WiFi client:");
-     set_pswd(server.arg("ssid"),ui_wifi_ssid_offset);
-     set_pswd(server.arg("password"),ui_wifi_pswd_offset);
-     send_text("Restarting in 5 seconds");
-     delay(5000);
-     ESP.restart();
+    Serial.println("Setting WiFi client");
+    safename=server.arg("safename");
+    safename.replace(".local","");
+    if (safename != "")
+    {
+      Serial.println("  Setting mDNS name to "+safename);
+      set_pswd(safename,safename_offset);
+    }
+
+    pinstr=server.arg("pin");
+    if (pinstr != "")
+    {
+      Serial.println("  Setting active pin to "+pinstr);
+      set_pswd(pinstr,pin_offset);
+    }
+
+    if (server.arg("ssid") != "" && server.arg("password") != "")
+    {
+      Serial.println("Setting WiFi client:");
+      set_pswd(server.arg("ssid"),ui_wifi_ssid_offset,false);
+      set_pswd(server.arg("password"),ui_wifi_pswd_offset);
+    }
+
+    send_text("Restarting in 5 seconds");
+    delay(5000);
+    ESP.restart();
   }
-  send_text(change_ap_html);
+
+  String page = change_ap_html;
+         page.replace("##safename##", safename);
+         page.replace("##pin##", String(pin));
+         page.replace("##VERSION##", VERSION);
+  send_text(page);
 }
 
 void set_auth()
@@ -300,10 +334,6 @@ void setup()
   // Get the EEPROM contents into RAM
   EEPROM.begin(EEPROM_SIZE);
 
-  // Ensure LED is off
-  pinMode(LED_BUILTIN,OUTPUT);
-  digitalWrite(LED_BUILTIN,HIGH);
-
   // Set the safe state
   pinMode(pin,OUTPUT);
   digitalWrite(pin,LOW);
@@ -316,11 +346,25 @@ void setup()
   wifi_ssid   = get_pswd(ui_wifi_ssid_offset);
   wifi_pswd   = get_pswd(ui_wifi_pswd_offset);
   lock_pswd   = get_pswd(lock_pswd_offset);
+  safename    = get_pswd(safename_offset);
+  pinstr      = get_pswd(pin_offset);
 
   if (lock_pswd != "")
   { 
     state=LOCKED;
   }
+
+  if (safename == "")
+    safename="safe";
+
+  if (pinstr != "")
+    pin=pinstr.toInt();
+  else
+    pin=default_pin;
+
+  // Ensure LED is off
+  pinMode(LED_BUILTIN,OUTPUT);
+  digitalWrite(LED_BUILTIN,HIGH);
 
   // This is a debugging line; it's only sent to the serial
   // port which can only be accessed when the safe is unlocked.
@@ -331,6 +375,8 @@ void setup()
   Serial.println("  Wifi SSID   >>>"+ wifi_ssid + "<<<");
   Serial.println("  Wifi Pswd   >>>"+ wifi_pswd + "<<<");
   Serial.println("  Lock Pswd   >>>"+ lock_pswd + "<<<");
+  Serial.println("  Safename    >>>"+ safename + "<<<");
+  Serial.println("  Relay Pin   >>>"+ String(pin) + "<<<");
 
   // Connect to the network
   Serial.println();
@@ -379,7 +425,7 @@ void setup()
   }
 
   //initialize mDNS service.
-  MDNS.begin("safe");
+  MDNS.begin(safename);
   MDNS.addService("http", "tcp", 80);
   Serial.println("mDNS responder started");
 

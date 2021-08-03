@@ -9,9 +9,34 @@ WiFi SSID: <input name=ssid size=40>
 <br>
 WiFi Password: <input name=password size=40>
 <br>
+Safe name: <input name=safename size=40 value="##safename##">
+<br>
+GPIO pin to trigger solenoid (default 12): <input name=pin size=2 value="##pin##">
+<br>
+For reference these are the pins on a NodeMCU 12E board:
+<blockquote>
+<pre>
+GPIO16 == D0
+GPIO5  == D1
+GPIO4  == D2 (pin on ESP8266/Relay board)
+GPIO0  == D3
+GPIO2  == D4
+GPIO14 == D5
+GPIO12 == D6 (the default)
+GPIO13 == D7
+GPIO15 == D8
+</pre>
+</blockquote>
+<br>
 <input type=submit value="Set WiFi" name=setwifi>
 <hr>
 If the change is accepted, the safe will reboot after 5 seconds.
+<hr>
+<p>
+&nbsp;
+<p>
+&nbsp;
+<font size=-3>Software version: ##VERSION##</font>
 </form>
 </body>
 </html>
@@ -107,6 +132,10 @@ Repeat: <input type=password name=lock2 length=40><br>
 </form>
 <hr>
 <a href="change_auth.html">Change Safe Authentication Details</a>
+<hr>
+<a href="change_ap.html">Change Safe Connection Details</a>
+<br>
+<hr>
 </center>
 </form>
 </body>
