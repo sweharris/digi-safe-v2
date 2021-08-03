@@ -2,6 +2,7 @@ ifndef PORT
 PORT=/dev/ttyUSB0
 endif
 BOARD=esp8266:esp8266:nodemcuv2
+XTAL=:xtal=160
 
 # ESPTOOL=$(wildcard $(HOME)/.local/bin/esptool.py)
 ESPTOOL=$(wildcard $(HOME)/.arduino15/packages/esp8266/hardware/esp8266/*/tools/esptool/esptool.py)
@@ -14,7 +15,7 @@ FS_SRC= $(wildcard html/*)
 $(TARGET): $(SRC) html.h
 	@rm -rf tmp
 	@mkdir -p tmp
-	TMPDIR=$(PWD)/tmp arduino-cli compile --fqbn=$(BOARD) --output-dir=$(PWD)
+	TMPDIR=$(PWD)/tmp arduino-cli compile --fqbn=$(BOARD)$(XTAL) --output-dir=$(PWD)
 	@rm -rf tmp
 
 html.h: $(FS_SRC)
