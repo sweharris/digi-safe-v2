@@ -42,9 +42,9 @@
 #define ui_pswd_offset       128
 #define ui_wifi_ssid_offset  256
 #define ui_wifi_pswd_offset  384
-#define lock_pswd_offset     512
 #define safename_offset      640
 #define pin_offset           768
+#define lock_pswd_offset     896
 
 enum safestate {
   UNLOCKED,
