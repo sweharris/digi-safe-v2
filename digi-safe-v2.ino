@@ -121,12 +121,12 @@ void set_pswd(String s, int offset, bool commit=true)
 // global server state variable to read the request.  This only works
 // 'cos the main loop is single threaded!
 
-void status()
+void status(String prefix="")
 {
   String r="Safe is ";
   if (state==OPENONCE) { r += "One time un"; }
   if (state==UNLOCKED) { r += "un"; }
-  send_text(r + "locked");
+  send_text(prefix + r + "locked");
 }
 
 void opensafe()
@@ -325,6 +325,7 @@ boolean handleRequest()
   else if (path == "/safe/")
   {
          if (server.hasArg("status"))     { status(); }
+         if (server.hasArg("version"))    { status(String(MODEL) + " " + VERSION + ","); }
     else if (server.hasArg("open"))       { opensafe(); }
     else if (server.hasArg("lock"))       { lock(); }
     else if (server.hasArg("pwtest"))     { unlock(false,true); }
